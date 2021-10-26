@@ -32,14 +32,18 @@ from model import BertForPhraseClassification
 
 tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
 
-paragraph_files, edus_files, labels_files = '../data/ets/para_text/*', '../data/ets/para_edu/*', '../data/ets/para_edu_label_all/*'
+paragraph_files, edus_files, labels_files = '../data/ets/para_text/*', '../data/ets/para_edu/*', '../data/ets/para_edu_label/*'
 argdata = ArgumentDataset(tokenizer, paragraph_files, edus_files, labels_files)
-edu_tag_model = BertForPhraseClassification.from_pretrained('bert-base-uncased')
+
+# edu_sep_id = tokenizer.convert_tokens_to_ids('[EDU_SEP]')
+config = BertConfig.from_pretrained("bert-base-uncased", num_labels=5)
+edu_tag_model = BertForPhraseClassification.from_pretrained("bert-base-uncased", config=config)
+edu_tag_model.resize_token_embeddings(len(tokenizer))
 
 training_args = TrainingArguments(
     output_dir='./',      
     num_train_epochs=3,
-    per_device_train_batch_size=16,  
+    per_device_train_batch_size=4,  
     save_steps=0, 
     do_train=True,
     dataloader_drop_last=True

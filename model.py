@@ -12,6 +12,8 @@ from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss, HingeEmbeddin
 from transformers.modeling_outputs import SequenceClassifierOutput
 from transformers.models.bert.modeling_bert import BertEmbeddings, BertModel, BertPreTrainedModel
 
+
+
 class BertForPhraseClassification(BertPreTrainedModel):
 
     # _keys_to_ignore_on_load_unexpected = [r"pooler"]
@@ -20,43 +22,90 @@ class BertForPhraseClassification(BertPreTrainedModel):
         super().__init__(config)
         self.config = config
         self.num_labels = config.num_labels
+        self.edu_sep_id = 30522
         self.edu_sequence_length = edu_sequence_length
 
-        self.bert = BertModel(config)
+        self.bert = BertModel(config, add_pooling_layer=False)
+        # self.bert = BertModel(config)
         classifier_dropout = (
             config.classifier_dropout if config.classifier_dropout is not None else config.hidden_dropout_prob
         )
         self.dropout = nn.Dropout(classifier_dropout)
-        self.classifier = nn.Linear(self.edu_sequence_length, config.num_labels)
-
+        self.classifier = nn.Linear(config.hidden_size, config.num_labels)
+        # print(self.config)
         self.init_weights()
 
 
     def forward(
         self,
-        edu_seq_input_ids=None,
-        edu_seq_attention_mask=None,
-        edu_seq_token_type_ids=None,
+        input_ids=None,
+        attention_mask=None,
+        token_type_ids=None,
         edu_labels=None,
         token_labels=None,
     ):
-        # edu_outputs of size: batch_size(=16), msx edus in one paragraph (=50), and bert hidden layer size (=768)
-        edu_outputs = torch.zeros(edu_seq_input_ids.shape[0], self.edu_sequence_length, self.config.hidden_size)
-        for i in range(self.edu_sequence_length):
-            outputs = self.bert(edu_seq_input_ids[:, i, :], attention_mask=edu_seq_attention_mask[:, i, :], token_type_ids=edu_seq_token_type_ids[:, i, :])
-            print(outputs[1].shape, edu_outputs[i].shape, edu_outputs.shape)
-            edu_outputs[:, i, :] = outputs[1]
 
-        # outputs = self.bert(edu_seq_input_ids, attention_mask=edu_seq_attention_mask, token_type_ids=edu_seq_token_type_ids)
-        # outputs = outputs[1]
+        outputs = self.bert(input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
+        sequence_output = outputs[0]
+        # print(input_ids.shape, outputs.shape)
+        edu_embeddings = self.get_edu_emb(input_ids, sequence_output)
+        print(edu_embeddings.shape)
         
-        edu_outputs = self.dropout(edu_outputs)
-        logits = self.classifier(edu_outputs)
+        edu_embeddings = self.dropout(edu_embeddings)
+        logits = self.classifier(edu_embeddings)
+        print(logits.shape)
 
         loss = None
-        if labels is not None:
+        if edu_labels is not None:
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+            loss = loss_fct(logits.view(-1, self.num_labels), edu_labels.view(-1))
             
         output = (logits,) + outputs[2:]
         return ((loss,) + output) if loss is not None else output
+
+    
+    def get_edu_emb(self, input_ids, outputs, edu_seperator_id=30522):
+        'Returns a sequence of 50 EDUs (padded or truncated) per paragraph represented as the average embeddings of their tokens'
+        batch_size = outputs.shape[0]
+        batch_para_edu_avg_emb = torch.zeros(batch_size,  self.edu_sequence_length, self.config.hidden_size)
+        
+        # finding the "[EDU_SEP]" token in each paragraph given a batch of input_ids
+        # seperators[0] has paragraph id in a batch
+        # seperators[1] has index of "[EDU_SEP]" in all paragraphs
+        seperators = (input_ids == edu_seperator_id).nonzero(as_tuple=True)
+        
+        # getting the number of edus in each paragraph
+        edu_per_para, all_keys, i = [], range(batch_size), 0
+        for k, v in Counter([t.item() for t in seperators[0]]).items():
+            while k != all_keys[i] and i < len(all_keys):
+                edu_per_para.append(0); i+=1
+            edu_per_para.append(v); i+=1
+        
+        # calculating the average embeddings for each EDU
+        seperators_idx = 0
+        for i, edu_count_per_para in enumerate(edu_per_para):
+            prev_edu_sep = 0
+            for j in range(edu_count_per_para):
+                if j < self.edu_sequence_length:
+                    cur_edu_sep = seperators[1][seperators_idx].item()
+                    # print(i, j, prev_edu_sep, cur_edu_sep)
+                    assert input_ids[i][prev_edu_sep] in [101, edu_seperator_id]
+                    assert input_ids[i][cur_edu_sep] in [edu_seperator_id, 102]
+
+                    batch_para_edu_avg_emb[i][j] = torch.mean(outputs[i][prev_edu_sep+1:cur_edu_sep], dim=0)
+                    prev_edu_sep = cur_edu_sep
+
+                seperators_idx += 1;
+            
+            if j < self.edu_sequence_length -1:
+                # calculating embeddings of the last EDU that is between [EDU_SEP] and [SEP]
+                cur_edu_sep = (input_ids[i] == 102).nonzero(as_tuple=True)[0].item()
+                # print(i, j+1, prev_edu_sep, cur_edu_sep)
+                assert input_ids[i][prev_edu_sep] in [101, edu_seperator_id]
+                assert input_ids[i][cur_edu_sep] in [edu_seperator_id, 102] 
+                batch_para_edu_avg_emb[i][j] = torch.mean(outputs[i][prev_edu_sep+1:cur_edu_sep], dim=0)
+            
+        return batch_para_edu_avg_emb
+    
+
+        
