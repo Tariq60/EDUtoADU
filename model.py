@@ -5,6 +5,8 @@
         3. pass the EDU embedding to the classifier layer to make predictions
         4. calculate the loss based on the predicted and gold EDU labels
 '''
+from collections import Counter
+
 import torch
 from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss, HingeEmbeddingLoss
@@ -49,11 +51,11 @@ class BertForPhraseClassification(BertPreTrainedModel):
         sequence_output = outputs[0]
         # print(input_ids.shape, outputs.shape)
         edu_embeddings = self.get_edu_emb(input_ids, sequence_output)
-        print(edu_embeddings.shape)
+        # print(edu_embeddings.shape)
         
         edu_embeddings = self.dropout(edu_embeddings)
         logits = self.classifier(edu_embeddings)
-        print(logits.shape)
+        # print(logits.shape)
 
         loss = None
         if edu_labels is not None:

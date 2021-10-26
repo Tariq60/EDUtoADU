@@ -17,7 +17,7 @@ from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss, HingeEmbeddingLoss
 
 from transformers.modeling_outputs import SequenceClassifierOutput
-from transformers.models.bert.modeling_bert import BertEmbeddings, BertModel, BertPreTrainedModel
+from transformers.models.bert.modeling_bert import BertConfig, BertEmbeddings, BertModel, BertPreTrainedModel
 from transformers.utils import logging
 
 from transformers.file_utils import ModelOutput
