@@ -36,7 +36,13 @@ metric = load_metric("accuracy")
 
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
+    # print(logits.shape, labels.shape)
     predictions = np.argmax(logits, axis=-1)
+    print(predictions[0])
+    labels = [l for para_l in labels for l in para_l if l != -100]
+    predictions = [p for para_p in predictions for p in para_p if p != -100]
+    print(len(labels), len(predictions))
+    print(classification_report(labels, predictions))
     return metric.compute(predictions=predictions, references=labels)
 
 def main():
@@ -53,7 +59,7 @@ def main():
     training_args = TrainingArguments(
         output_dir='./',      
         num_train_epochs=1,
-        per_device_train_batch_size=16,  
+        per_device_train_batch_size=32,  
         save_steps=0, 
         do_train=True,
         do_eval=True,

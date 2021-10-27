@@ -11,7 +11,7 @@ import torch
 from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss, HingeEmbeddingLoss
 
-from transformers.modeling_outputs import SequenceClassifierOutput
+from transformers.modeling_outputs import SequenceClassifierOutput, TokenClassifierOutput
 from transformers.models.bert.modeling_bert import BertEmbeddings, BertModel, BertPreTrainedModel
 
 
@@ -43,7 +43,7 @@ class BertForPhraseClassification(BertPreTrainedModel):
         input_ids=None,
         attention_mask=None,
         token_type_ids=None,
-        edu_labels=None,
+        labels=None,
         token_labels=None,
     ):
 
@@ -58,17 +58,23 @@ class BertForPhraseClassification(BertPreTrainedModel):
         
         edu_embeddings = self.dropout(edu_embeddings)
         logits = self.classifier(edu_embeddings)
-        # print(logits.shape, edu_labels.shape)
-        # print(logits.view(-1, self.num_labels).shape, edu_labels.view(-1).shape)
-        # print(logits.view(-1, self.num_labels)[:10], edu_labels.view(-1)[:10])
+        # print(logits.shape, labels.shape)
+        # print(logits.view(-1, self.num_labels).shape, labels.view(-1).shape)
+        # print(logits.view(-1, self.num_labels)[:10], labels.view(-1)[:10])
 
         loss = None
-        if edu_labels is not None:
+        if labels is not None:
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.num_labels), edu_labels.view(-1))
+            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
             
-        output = (logits,) + outputs[2:]
-        return ((loss,) + output) if loss is not None else output
+        # output = (logits,) + outputs[2:]
+        # return ((loss,) + output) if loss is not None else output
+        return TokenClassifierOutput(
+            loss=loss,
+            logits=logits,
+            hidden_states=outputs.hidden_states,
+            attentions=outputs.attentions,
+        )
 
     
     def get_edu_emb(self, input_ids, outputs, edu_seperator_id=30522):

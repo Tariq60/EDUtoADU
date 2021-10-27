@@ -58,7 +58,7 @@ class ArgumentDataset(Dataset):
         return {'input_ids': self.para_edu_splits_tok['input_ids'][i],
                 'attention_mask': self.para_edu_splits_tok['attention_mask'][i],
                 'token_type_ids': self.para_edu_splits_tok['token_type_ids'][i],
-                'edu_labels' : self.label_edus[i],
+                'labels' : self.label_edus[i],
                 'token_labels' : self.label_tokens[i]
                }
         
