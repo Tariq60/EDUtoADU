@@ -39,8 +39,8 @@ class ArgumentDataset(Dataset):
             [{'edu': line.rstrip().split('\t')[0], 'tokens': line.rstrip().split('\t')[1]} for line in para_labels]
                       for para_labels in self.labels
         ]
-        self.label_edus = [[0 for _ in range(self.max_edu_seq)] for _ in self.labels]
-        self.label_tokens = [[[0 for _ in range(self.max_len)] for _ in range(self.max_edu_seq)] for _ in self.labels]
+        self.label_edus = [[-100 for _ in range(self.max_edu_seq)] for _ in self.labels]
+        self.label_tokens = [[[-100 for _ in range(self.max_len)] for _ in range(self.max_edu_seq)] for _ in self.labels]
         
         self.para_edu_splits = [' [EDU_SEP] '.join([line.rstrip() for line in para_edus]) for para_edus in self.edus]
         self.para_edu_splits_tok = self.tokenizer(self.para_edu_splits, truncation=True, padding='max_length', max_length=self.max_len)

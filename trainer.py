@@ -29,30 +29,49 @@ from typing import Optional
 from transformers import Trainer, TrainingArguments
 from dataset import ArgumentDataset
 from model import BertForPhraseClassification
+from sklearn.metrics import classification_report
 
-tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+from datasets import load_metric
+metric = load_metric("accuracy")
 
-edus_files, labels_files = '../data/training_data/*.edus', '../data/training_data/*.labels'
-argdata = ArgumentDataset(tokenizer, edus_files, labels_files)
+def compute_metrics(eval_pred):
+    logits, labels = eval_pred
+    predictions = np.argmax(logits, axis=-1)
+    return metric.compute(predictions=predictions, references=labels)
 
-# edu_sep_id = tokenizer.convert_tokens_to_ids('[EDU_SEP]')
-config = BertConfig.from_pretrained("bert-base-uncased", num_labels=5)
-edu_tag_model = BertForPhraseClassification.from_pretrained("bert-base-uncased", config=config)
-edu_tag_model.resize_token_embeddings(len(tokenizer))
+def main():
+    tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
 
-training_args = TrainingArguments(
-    output_dir='./',      
-    num_train_epochs=3,
-    per_device_train_batch_size=4,  
-    save_steps=0, 
-    do_train=True,
-    dataloader_drop_last=True
-)
+    edus_files, labels_files = '../data/training_data/*.edus', '../data/training_data/*.labels'
+    argdata = ArgumentDataset(tokenizer, edus_files, labels_files)
 
-trainer = Trainer(
-    model=edu_tag_model,        
-    args=training_args,                
-    train_dataset=argdata,
-)
+    # edu_sep_id = tokenizer.convert_tokens_to_ids('[EDU_SEP]')
+    config = BertConfig.from_pretrained("bert-base-uncased", num_labels=5)
+    edu_tag_model = BertForPhraseClassification.from_pretrained("bert-base-uncased", config=config)
+    edu_tag_model.resize_token_embeddings(len(tokenizer))
 
-trainer.train()
+    training_args = TrainingArguments(
+        output_dir='./',      
+        num_train_epochs=1,
+        per_device_train_batch_size=16,  
+        save_steps=0, 
+        do_train=True,
+        do_eval=True,
+        dataloader_drop_last=True,
+        logging_steps=50
+    )
+
+    trainer = Trainer(
+        model=edu_tag_model,        
+        args=training_args,                
+        train_dataset=argdata,
+        eval_dataset=argdata,
+        compute_metrics=compute_metrics
+    )
+
+    trainer.train()
+    metrics = trainer.evaluate(eval_dataset=argdata)
+    print(metrics)
+
+if __name__ == '__main__':
+    main()

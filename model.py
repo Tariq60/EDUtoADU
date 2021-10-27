@@ -49,13 +49,18 @@ class BertForPhraseClassification(BertPreTrainedModel):
 
         outputs = self.bert(input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
         sequence_output = outputs[0]
-        # print(input_ids.shape, outputs.shape)
+        # print(input_ids.shape, sequence_output.shape)
         edu_embeddings = self.get_edu_emb(input_ids, sequence_output)
         # print(edu_embeddings.shape)
+        # print(edu_embeddings[-1][:10])
+        # if any(torch.isnan(edu_embeddings).view(-1)):
+        #     print('This edu_embeddings Tensor has a NaN!!!!!!')
         
         edu_embeddings = self.dropout(edu_embeddings)
         logits = self.classifier(edu_embeddings)
-        # print(logits.shape)
+        # print(logits.shape, edu_labels.shape)
+        # print(logits.view(-1, self.num_labels).shape, edu_labels.view(-1).shape)
+        # print(logits.view(-1, self.num_labels)[:10], edu_labels.view(-1)[:10])
 
         loss = None
         if edu_labels is not None:
@@ -72,7 +77,7 @@ class BertForPhraseClassification(BertPreTrainedModel):
         batch_para_edu_avg_emb = torch.zeros(batch_size,  self.edu_sequence_length, self.config.hidden_size)
         
         # finding the "[EDU_SEP]" token in each paragraph given a batch of input_ids
-        # seperators[0] has paragraph id in a batch
+        # seperators[0] has index of the paragraph in a batch
         # seperators[1] has index of "[EDU_SEP]" in all paragraphs
         seperators = (input_ids == edu_seperator_id).nonzero(as_tuple=True)
         
@@ -94,7 +99,7 @@ class BertForPhraseClassification(BertPreTrainedModel):
                     assert input_ids[i][prev_edu_sep] in [101, edu_seperator_id]
                     assert input_ids[i][cur_edu_sep] in [edu_seperator_id, 102]
 
-                    batch_para_edu_avg_emb[i][j] = torch.mean(outputs[i][prev_edu_sep+1:cur_edu_sep], dim=0)
+                    batch_para_edu_avg_emb[i][j] = torch.mean(outputs[i][prev_edu_sep+1:prev_edu_sep+2], dim=0)
                     prev_edu_sep = cur_edu_sep
 
                 seperators_idx += 1;
@@ -105,7 +110,7 @@ class BertForPhraseClassification(BertPreTrainedModel):
                 # print(i, j+1, prev_edu_sep, cur_edu_sep)
                 assert input_ids[i][prev_edu_sep] in [101, edu_seperator_id]
                 assert input_ids[i][cur_edu_sep] in [edu_seperator_id, 102] 
-                batch_para_edu_avg_emb[i][j] = torch.mean(outputs[i][prev_edu_sep+1:cur_edu_sep], dim=0)
+                batch_para_edu_avg_emb[i][j] = torch.mean(outputs[i][prev_edu_sep+1:prev_edu_sep+2], dim=0)
             
         return batch_para_edu_avg_emb.to('cuda:0')
     
