@@ -10,22 +10,23 @@ from transformers import AutoTokenizer
 
 class ArgumentDataset(Dataset):
     
-    def __init__(self, tokenizer, paragraph_files, edus_files, labels_files, max_len=256, max_edu_seq=50):
+    def __init__(self, tokenizer, edus_files, labels_files, max_len=256, max_edu_seq=50):
         
         self.max_len, self.max_edu_seq = max_len, max_edu_seq
         self.tokenizer = tokenizer
         tokenizer.add_special_tokens({'additional_special_tokens':['[EDU_SEP]']})
         
-        self.paragraphs = [''.join(open(file).readlines()) for file in glob.glob(paragraph_files)]
-        self.edus = [open(file).readlines() for file in glob.glob(edus_files)]
-        self.labels = [open(file).readlines() for file in glob.glob(labels_files)]
+        # self.paragraphs = [''.join(open(file).readlines()) for file in glob.glob(paragraph_files)]
+        self.edus = [open(file).readlines() for file in sorted(glob.glob(edus_files))]
+        self.labels = [open(file).readlines() for file in sorted(glob.glob(labels_files))]
         self.label2id = {'B-claim': 1, 'I-claim': 2, 'B-premise': 3, 'I-premise': 4, 'O' : 0}
         
+        assert len(self.labels) == len(self.edus)
         ######
         # filterout = [7, 24, 89, 231, 298, 348, 370, 373, 421, 473, 481, 485, 496, 508, 599, 680] # linux file order
-        filterout = [27, 99, 163, 183, 191, 194, 226, 239, 259, 271, 289, 377, 410, 582, 626, 656] # mac file order
-        for i in filterout[::-1]:
-            self.paragraphs.pop(i); self.edus.pop(i); self.labels.pop(i)
+        # filterout = [27, 99, 163, 183, 191, 194, 226, 239, 259, 271, 289, 377, 410, 582, 626, 656] # mac file order
+        # for i in filterout[::-1]:
+        #     self.paragraphs.pop(i); self.edus.pop(i); self.labels.pop(i)
         ######
         
         self.labels = [

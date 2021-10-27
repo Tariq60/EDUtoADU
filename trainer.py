@@ -32,8 +32,8 @@ from model import BertForPhraseClassification
 
 tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
 
-paragraph_files, edus_files, labels_files = '../data/ets/para_text/*', '../data/ets/para_edu/*', '../data/ets/para_edu_label/*'
-argdata = ArgumentDataset(tokenizer, paragraph_files, edus_files, labels_files)
+edus_files, labels_files = '../data/training_data/*.edus', '../data/training_data/*.labels'
+argdata = ArgumentDataset(tokenizer, edus_files, labels_files)
 
 # edu_sep_id = tokenizer.convert_tokens_to_ids('[EDU_SEP]')
 config = BertConfig.from_pretrained("bert-base-uncased", num_labels=5)
