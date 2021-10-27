@@ -22,6 +22,12 @@ class ArgumentDataset(Dataset):
         self.label2id = {'B-claim': 1, 'I-claim': 2, 'B-premise': 3, 'I-premise': 4, 'O' : 0}
         
         assert len(self.labels) == len(self.edus)
+        # for f, l in zip(sorted(glob.glob(labels_files)), self.labels):
+        #     print(f)
+        #     for i, line in enumerate(l):
+        #         print('{}, {}, {}'.format(len(line.split('\t')), i, line))
+        #         e, t = line.rstrip().split('\t')[0], line.rstrip().split('\t')[1]
+
         ######
         # filterout = [7, 24, 89, 231, 298, 348, 370, 373, 421, 473, 481, 485, 496, 508, 599, 680] # linux file order
         # filterout = [27, 99, 163, 183, 191, 194, 226, 239, 259, 271, 289, 377, 410, 582, 626, 656] # mac file order

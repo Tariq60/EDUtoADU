@@ -16,11 +16,11 @@ import torch
 from torch import nn
 from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss, MSELoss, HingeEmbeddingLoss
 
-from transformers.modeling_outputs import SequenceClassifierOutput
+#from transformers.modeling_outputs import SequenceClassifierOutput
 from transformers.models.bert.modeling_bert import BertConfig, BertEmbeddings, BertModel, BertPreTrainedModel
 from transformers.utils import logging
 
-from transformers.file_utils import ModelOutput
+# from transformers.file_utils import ModelOutput
 from typing import Optional
 
 # logger = logging.get_logger(__name__)

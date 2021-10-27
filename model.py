@@ -86,7 +86,7 @@ class BertForPhraseClassification(BertPreTrainedModel):
         # calculating the average embeddings for each EDU
         seperators_idx = 0
         for i, edu_count_per_para in enumerate(edu_per_para):
-            prev_edu_sep = 0
+            prev_edu_sep, j = 0, 0
             for j in range(edu_count_per_para):
                 if j < self.edu_sequence_length:
                     cur_edu_sep = seperators[1][seperators_idx].item()
@@ -107,7 +107,7 @@ class BertForPhraseClassification(BertPreTrainedModel):
                 assert input_ids[i][cur_edu_sep] in [edu_seperator_id, 102] 
                 batch_para_edu_avg_emb[i][j] = torch.mean(outputs[i][prev_edu_sep+1:cur_edu_sep], dim=0)
             
-        return batch_para_edu_avg_emb
+        return batch_para_edu_avg_emb.to('cuda:0')
     
 
         
