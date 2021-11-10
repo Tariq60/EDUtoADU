@@ -14,7 +14,6 @@ class ArgumentDataset(Dataset):
         
         self.max_len, self.max_edu_seq = max_len, max_edu_seq
         self.tokenizer = tokenizer
-        tokenizer.add_special_tokens({'additional_special_tokens':['[EDU_SEP]']})
         
         # self.paragraphs = [''.join(open(file).readlines()) for file in glob.glob(paragraph_files)]
         self.edus = [open(file).readlines() for file in sorted(glob.glob(edus_files))]
@@ -39,7 +38,7 @@ class ArgumentDataset(Dataset):
             [{'edu': line.rstrip().split('\t')[0], 'tokens': line.rstrip().split('\t')[1]} for line in para_labels]
                       for para_labels in self.labels
         ]
-        self.label_edus = [[-100 for _ in range(self.max_edu_seq)] for _ in self.labels]
+        self.label_edus = [[0 for _ in range(self.max_edu_seq)] for _ in self.labels]
         self.label_tokens = [[[-100 for _ in range(self.max_len)] for _ in range(self.max_edu_seq)] for _ in self.labels]
         
         self.para_edu_splits = [' [EDU_SEP] '.join([line.rstrip() for line in para_edus]) for para_edus in self.edus]

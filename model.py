@@ -49,6 +49,9 @@ class BertForPhraseClassification(BertPreTrainedModel):
 
         outputs = self.bert(input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids)
         sequence_output = outputs[0]
+        # for batch in sequence_output:
+        #     for t in batch:
+        #         print('not in function', t[0])
         # print(input_ids.shape, sequence_output.shape)
         edu_embeddings = self.get_edu_emb(input_ids, sequence_output)
         # print(edu_embeddings.shape)
@@ -77,7 +80,7 @@ class BertForPhraseClassification(BertPreTrainedModel):
         )
 
     
-    def get_edu_emb(self, input_ids, outputs, edu_seperator_id=30522):
+    def get_edu_emb(self, input_ids, outputs, edu_seperator_id=30522, max_edu_len=10):
         'Returns a sequence of 50 EDUs (padded or truncated) per paragraph represented as the average embeddings of their tokens'
         batch_size = outputs.shape[0]
         batch_para_edu_avg_emb = torch.zeros(batch_size,  self.edu_sequence_length, self.config.hidden_size)
@@ -86,6 +89,8 @@ class BertForPhraseClassification(BertPreTrainedModel):
         # seperators[0] has index of the paragraph in a batch
         # seperators[1] has index of "[EDU_SEP]" in all paragraphs
         seperators = (input_ids == edu_seperator_id).nonzero(as_tuple=True)
+        # print(seperators[0])
+        # print(seperators[1])
         
         # getting the number of edus in each paragraph
         edu_per_para, all_keys, i = [], range(batch_size), 0
@@ -93,6 +98,8 @@ class BertForPhraseClassification(BertPreTrainedModel):
             while k != all_keys[i] and i < len(all_keys):
                 edu_per_para.append(0); i+=1
             edu_per_para.append(v); i+=1
+
+        # print(edu_per_para)
         
         # calculating the average embeddings for each EDU
         seperators_idx = 0
@@ -105,20 +112,41 @@ class BertForPhraseClassification(BertPreTrainedModel):
                     assert input_ids[i][prev_edu_sep] in [101, edu_seperator_id]
                     assert input_ids[i][cur_edu_sep] in [edu_seperator_id, 102]
 
-                    batch_para_edu_avg_emb[i][j] = torch.mean(outputs[i][prev_edu_sep+1:prev_edu_sep+2], dim=0)
+                    # print(i, j, len(outputs[i][prev_edu_sep+1:cur_edu_sep]))
+                    # print(prev_edu_sep, cur_edu_sep)
+                    # cur_edu_sep_max_len = min(cur_edu_sep, max_edu_len)
+                    if cur_edu_sep - prev_edu_sep > 1:
+                        batch_para_edu_avg_emb[i][j] = torch.mean(outputs[i][prev_edu_sep+1:cur_edu_sep], dim=0)
+                    # if any(torch.isnan(batch_para_edu_avg_emb[i][j]).view(-1)):
+                    #     print(batch_para_edu_avg_emb[i][j])
+                    #     print(input_ids[i])
+                    # for t_i, t in enumerate(outputs[i][prev_edu_sep+1:cur_edu_sep]):
+                    #     if any(torch.isnan(t).view(-1)):
+                    #         print(t_i, t)
                     prev_edu_sep = cur_edu_sep
 
                 seperators_idx += 1;
             
-            if j < self.edu_sequence_length -1:
+            if j+1 < self.edu_sequence_length:
                 # calculating embeddings of the last EDU that is between [EDU_SEP] and [SEP]
                 cur_edu_sep = (input_ids[i] == 102).nonzero(as_tuple=True)[0].item()
                 # print(i, j+1, prev_edu_sep, cur_edu_sep)
                 assert input_ids[i][prev_edu_sep] in [101, edu_seperator_id]
-                assert input_ids[i][cur_edu_sep] in [edu_seperator_id, 102] 
-                batch_para_edu_avg_emb[i][j] = torch.mean(outputs[i][prev_edu_sep+1:prev_edu_sep+2], dim=0)
+                assert input_ids[i][cur_edu_sep] in [edu_seperator_id, 102]
+
+                # print('final edu check:', i, j+1, len(outputs[i][prev_edu_sep+1:cur_edu_sep]))
+                # print(prev_edu_sep, cur_edu_sep)
+                # cur_edu_sep_max_len = min(cur_edu_sep, max_edu_len)
+                if cur_edu_sep - prev_edu_sep > 1:
+                    batch_para_edu_avg_emb[i][j+1] = torch.mean(outputs[i][prev_edu_sep+1:cur_edu_sep], dim=0)
+                # if any(torch.isnan(batch_para_edu_avg_emb[i][j+1]).view(-1)):
+                #         print(batch_para_edu_avg_emb[i][j+1])
+                #         print(input_ids[i])
+                # for t_i, t in enumerate(outputs[i][prev_edu_sep+1:cur_edu_sep]):
+                #     if any(torch.isnan(t).view(-1)):
+                #         print(t_i, t)
             
         return batch_para_edu_avg_emb.to('cuda:0')
-    
+
 
         

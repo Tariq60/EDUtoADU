@@ -39,17 +39,24 @@ def compute_metrics(eval_pred):
     # print(logits.shape, labels.shape)
     predictions = np.argmax(logits, axis=-1)
     print(predictions[0])
-    labels = [l for para_l in labels for l in para_l if l != -100]
-    predictions = [p for para_p in predictions for p in para_p if p != -100]
+    print(labels[0])
+    labels = [l for para_l in labels for l in para_l]
+    predictions = [p for para_p in predictions for p in para_p]
     print(len(labels), len(predictions))
     print(classification_report(labels, predictions))
     return metric.compute(predictions=predictions, references=labels)
 
 def main():
     tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+    tokenizer.add_special_tokens({'additional_special_tokens':['[EDU_SEP]']})
 
+    # training data
     edus_files, labels_files = '../data/training_data/*.edus', '../data/training_data/*.labels'
     argdata = ArgumentDataset(tokenizer, edus_files, labels_files)
+
+    # validation_data
+    val_edus_files, val_labels_files = '../data/validation_data/*.edus', '../data/validation_data/*.labels'
+    val_argdata = ArgumentDataset(tokenizer, val_edus_files, val_labels_files)
 
     # edu_sep_id = tokenizer.convert_tokens_to_ids('[EDU_SEP]')
     config = BertConfig.from_pretrained("bert-base-uncased", num_labels=5)
@@ -58,25 +65,25 @@ def main():
 
     training_args = TrainingArguments(
         output_dir='./',      
-        num_train_epochs=1,
-        per_device_train_batch_size=32,  
+        num_train_epochs=10,
+        per_device_train_batch_size=16,  
         save_steps=0, 
         do_train=True,
         do_eval=True,
         dataloader_drop_last=True,
-        logging_steps=50
+        logging_steps=1,
     )
 
     trainer = Trainer(
         model=edu_tag_model,        
         args=training_args,                
         train_dataset=argdata,
-        eval_dataset=argdata,
+        eval_dataset=val_argdata,
         compute_metrics=compute_metrics
     )
 
     trainer.train()
-    metrics = trainer.evaluate(eval_dataset=argdata)
+    metrics = trainer.evaluate(eval_dataset=val_argdata)
     print(metrics)
 
 if __name__ == '__main__':
