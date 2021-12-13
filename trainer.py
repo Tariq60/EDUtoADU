@@ -71,7 +71,8 @@ def main():
         do_train=True,
         do_eval=True,
         dataloader_drop_last=True,
-        logging_steps=1,
+        logging_steps=5,
+        evaluation_strategy='epoch',
     )
 
     trainer = Trainer(
