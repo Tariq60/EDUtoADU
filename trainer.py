@@ -1,3 +1,6 @@
+import os
+import argparse
+
 # data imports
 import glob
 import random
@@ -47,32 +50,64 @@ def compute_metrics(eval_pred):
     return metric.compute(predictions=predictions, references=labels)
 
 def main():
-    tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+
+    parser = argparse.ArgumentParser(description='Retrofitting on a single paraphrase dataset')
+
+    ## model and dataset args
+    parser.add_argument("--bert_model", default='bert-base-uncased', type=str, help='bert model to fine-tune')
+    parser.add_argument("--data_dir", default='', type=str, help='directory for all sentiment datasets')
+    parser.add_argument("--dataset", required=True, type=str, help='argumentation datasets to be used for training.')
+    parser.add_argument("--output_dir", default='', type=str, help='directory to store the model')
+    parser.add_argument("--logging_dir", default='', type=str, help='directory to store the logs')
+    
+    ## output_dir in training args to save the model
+    # parser.add_argument('--save_model', action='store_true')
+    # parser.add_argument("--save_model_dir", default='', type=str, help='directory to store the model')
+    # parser.add_argument("--model_name", default='', type=str, help='name of the model inside save_dir')
+
+    ## training args, for more details: https://huggingface.co/transformers/_modules/transformers/training_args.html#TrainingArguments
+    parser.add_argument("--num_train_epochs", default=10, type=int)
+    parser.add_argument("--per_device_train_batch_size", default=16, type=int)
+    # parser.add_argument("--per_device_eval_batch_size", default=16, type=int)
+    # parser.add_argument("--warmup_steps", default=500, type=int)
+    # parser.add_argument("--weight_decay", default=0.01, type=int)
+    parser.add_argument("--logging_steps", default=5, type=int)
+    # parser.add_argument("--save_strategy", default='steps', type=str)
+    parser.add_argument("--save_steps", default=0, type=int)
+    parser.add_argument('--do_train', action='store_true')
+    parser.add_argument('--do_eval', action='store_true')
+    parser.add_argument("--evaluation_strategy", default='epochs', type=str)
+    # parser.add_argument("--evaluation_steps", default=100, type=int)
+
+    args = parser.parse_args()
+
+
+    tokenizer = AutoTokenizer.from_pretrained(args.bert_model)
     tokenizer.add_special_tokens({'additional_special_tokens':['[EDU_SEP]']})
 
-    # training data
-    edus_files, labels_files = '../data/training_data/*.edus', '../data/training_data/*.labels'
+    ## training data
+    edus_files, labels_files = os.path.join(args.data_dir, 'training_data/*.edus'), os.path.join(args.data_dir, 'training_data/*.labels')
     argdata = ArgumentDataset(tokenizer, edus_files, labels_files)
 
-    # validation_data
-    val_edus_files, val_labels_files = '../data/validation_data/*.edus', '../data/validation_data/*.labels'
+    ## validation_data
+    val_edus_files, val_labels_files = os.path.join(args.data_dir, 'validation_data/*.edus'), os.path.join(args.data_dir, 'validation_data/*.labels')
     val_argdata = ArgumentDataset(tokenizer, val_edus_files, val_labels_files)
 
-    # edu_sep_id = tokenizer.convert_tokens_to_ids('[EDU_SEP]')
-    config = BertConfig.from_pretrained("bert-base-uncased", num_labels=5)
-    edu_tag_model = BertForPhraseClassification.from_pretrained("bert-base-uncased", config=config)
+    ## edu_sep_id = tokenizer.convert_tokens_to_ids('[EDU_SEP]')
+    config = BertConfig.from_pretrained(args.bert_model, num_labels=args.num_labels)
+    edu_tag_model = BertForPhraseClassification.from_pretrained(args.bert_model, config=config)
     edu_tag_model.resize_token_embeddings(len(tokenizer))
 
     training_args = TrainingArguments(
         output_dir='./',      
-        num_train_epochs=10,
-        per_device_train_batch_size=16,  
-        save_steps=0, 
-        do_train=True,
-        do_eval=True,
-        dataloader_drop_last=True,
-        logging_steps=5,
-        evaluation_strategy='epoch',
+        num_train_epochs=args.num_train_epochs,
+        per_device_train_batch_size=args.per_device_train_batch_size,  
+        save_steps=args.save_steps, 
+        do_train=args.do_train,
+        do_eval=args.do_eval,
+        # dataloader_drop_last=True,
+        logging_steps=args.logging_steps,
+        evaluation_strategy=args.evaluation_strategy,
     )
 
     trainer = Trainer(
