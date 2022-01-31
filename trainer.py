@@ -56,10 +56,10 @@ def main():
     ## model and dataset args
     parser.add_argument("--bert_model", default='bert-base-uncased', type=str, help='bert model to fine-tune')
     parser.add_argument("--data_dir", default='', type=str, help='directory for all sentiment datasets')
-    parser.add_argument("--dataset", required=True, type=str, help='argumentation datasets to be used for training.')
-    parser.add_argument("--output_dir", default='', type=str, help='directory to store the model')
-    parser.add_argument("--logging_dir", default='', type=str, help='directory to store the logs')
-    
+    # parser.add_argument("--dataset", required=True, type=str, help='argumentation datasets to be used for training.')
+    parser.add_argument("--output_dir", default='./', type=str, help='directory to store the model')
+    # parser.add_argument("--logging_dir", default='', type=str, help='directory to store the logs')
+    parser.add_argument("--num_labels", default=5, type=int)
     ## output_dir in training args to save the model
     # parser.add_argument('--save_model', action='store_true')
     # parser.add_argument("--save_model_dir", default='', type=str, help='directory to store the model')
@@ -76,7 +76,7 @@ def main():
     parser.add_argument("--save_steps", default=0, type=int)
     parser.add_argument('--do_train', action='store_true')
     parser.add_argument('--do_eval', action='store_true')
-    parser.add_argument("--evaluation_strategy", default='epochs', type=str)
+    parser.add_argument("--evaluation_strategy", default='epoch', type=str)
     # parser.add_argument("--evaluation_steps", default=100, type=int)
 
     args = parser.parse_args()
@@ -99,7 +99,7 @@ def main():
     edu_tag_model.resize_token_embeddings(len(tokenizer))
 
     training_args = TrainingArguments(
-        output_dir='./',      
+        output_dir=args.output_dir,      
         num_train_epochs=args.num_train_epochs,
         per_device_train_batch_size=args.per_device_train_batch_size,  
         save_steps=args.save_steps, 
