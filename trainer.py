@@ -3,6 +3,7 @@ import argparse
 
 # data imports
 import glob
+import pickle
 import random
 import numpy as np
 import torch
@@ -37,25 +38,30 @@ from sklearn.metrics import classification_report
 from datasets import load_metric
 metric = load_metric("accuracy")
 
+
 def compute_metrics(eval_pred):
     logits, labels = eval_pred
     # print(logits.shape, labels.shape)
     predictions = np.argmax(logits, axis=-1)
-    print(predictions[0])
-    print(labels[0])
-    labels = [l for para_l in labels for l in para_l]
-    predictions = [p for para_p in predictions for p in para_p]
+    pickle.dump(labels, open('../pkl/edu_labels.pkl','wb'))
+    pickle.dump(predictions, open('../pkl/edu_predictions.pkl','wb'))
+    # true_predictions = [
+    #         [p for (p, l) in zip(prediction, label) if l != -100]
+    #         for prediction, label in zip(predictions, labels)
+    #     ]
+    predictions = [p for para_p, para_l in zip(predictions, labels) for p, l in zip(para_p, para_l) if l != -100]
+    labels = [l for para_l in labels for l in para_l if l != -100]
     print(len(labels), len(predictions))
     print(classification_report(labels, predictions))
     return metric.compute(predictions=predictions, references=labels)
 
 def main():
 
-    parser = argparse.ArgumentParser(description='Retrofitting on a single paraphrase dataset')
+    parser = argparse.ArgumentParser(description='EDU-based argument segmentation')
 
     ## model and dataset args
     parser.add_argument("--bert_model", default='bert-base-uncased', type=str, help='bert model to fine-tune')
-    parser.add_argument("--data_dir", default='', type=str, help='directory for all sentiment datasets')
+    parser.add_argument("--data_dir", default='', type=str, help='directory for training and validation data')
     # parser.add_argument("--dataset", required=True, type=str, help='argumentation datasets to be used for training.')
     parser.add_argument("--output_dir", default='./', type=str, help='directory to store the model')
     # parser.add_argument("--logging_dir", default='', type=str, help='directory to store the logs')
@@ -66,7 +72,7 @@ def main():
     # parser.add_argument("--model_name", default='', type=str, help='name of the model inside save_dir')
 
     ## training args, for more details: https://huggingface.co/transformers/_modules/transformers/training_args.html#TrainingArguments
-    parser.add_argument("--num_train_epochs", default=10, type=int)
+    parser.add_argument("--num_train_epochs", default=3, type=float)
     parser.add_argument("--per_device_train_batch_size", default=16, type=int)
     # parser.add_argument("--per_device_eval_batch_size", default=16, type=int)
     # parser.add_argument("--warmup_steps", default=500, type=int)
@@ -78,9 +84,10 @@ def main():
     parser.add_argument('--do_eval', action='store_true')
     parser.add_argument("--evaluation_strategy", default='epoch', type=str)
     # parser.add_argument("--evaluation_steps", default=100, type=int)
+    parser.add_argument("--torch_seed", default=5, type=int)
 
     args = parser.parse_args()
-
+    torch.manual_seed(args.torch_seed)
 
     tokenizer = AutoTokenizer.from_pretrained(args.bert_model)
     tokenizer.add_special_tokens({'additional_special_tokens':['[EDU_SEP]']})
