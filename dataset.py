@@ -18,8 +18,9 @@ class ArgumentDataset(Dataset):
         # self.paragraphs = [''.join(open(file).readlines()) for file in glob.glob(paragraph_files)]
         self.edus = [open(file).readlines() for file in sorted(glob.glob(edus_files))]
         self.labels = [open(file).readlines() for file in sorted(glob.glob(labels_files))]
-        self.label2id = {'B-claim': 1, 'I-claim': 2, 'B-premise': 3, 'I-premise': 4, 'O' : 0}
-        
+        # self.label2id = {'B-claim': 1, 'I-claim': 2, 'B-premise': 3, 'I-premise': 4, 'O' : 0}
+        self.label2id = {'claim': 1, 'premise': 2, 'O' : 0}
+
         assert len(self.labels) == len(self.edus)
         
         # for labels, filename in zip(self.labels, sorted(glob.glob(labels_files))):
